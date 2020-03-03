@@ -34,7 +34,7 @@
 
 // Compute the sum of squared error between matricies A and B (M x N)
 template <typename T>
-double matrix_sse (const T *A, const T *B, uint64_t M, uint64_t N) {
+double matrix_sse (T *A, const T *B, uint64_t M, uint64_t N) {
         double sum = 0;
         for (uint64_t y = 0; y < M; y ++) {
                 for (uint64_t x = 0; x < N; x ++) {
