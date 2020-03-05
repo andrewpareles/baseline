@@ -7,11 +7,11 @@
 // included. bsg_tiles_X and bsg_tiles_Y must also be defined for
 // legacy reasons, but they are deprecated.
 #define BSG_TILE_GROUP_X_DIM 1
-#define BSG_TILE_GROUP_Y_DIM 1
+#define BSG_TILE_GROU`P_Y_DIM 1
 #define bsg_tiles_X BSG_TILE_GROUP_X_DIM
 #define bsg_tiles_Y BSG_TILE_GROUP_Y_DIM
 #include <bsg_manycore.h>
-#include <bsg_tile_group_barrier.h>
+
 #include <cstdlib>
 #include <cstring>
 
@@ -39,7 +39,7 @@ extern "C" {
 // #pragma GCC unroll 8
                         for (int j = i; j < i + F; j++){ //j is index of filter summation in A
                                 if (0 <= j && j < N){ //unpadded region
-                                        val += filter[F - 1 - (j - i)] * A[j];
+                                        val += filter[F - 1 - (j - i)] * array[j];
                                 } else { //paddded region
                                 //...
                                 }

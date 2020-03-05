@@ -124,7 +124,8 @@ int kernel_conv1d(int argc, char **argv) {
         hb_mc_dimension_t tilegroup_dim = { .x = 1, .y = 1 };
         hb_mc_dimension_t grid_dim      = { .x = 1, .y = 1 };
         uint32_t cuda_argv[] = { A_device, N, filter_device, F, P, B_device, S };
-        size_t cuda_argc = 7; // data/hb/bsg_bladerunner/bsg_replicant/libraries/bsg_manycore_cuda.h
+        size_t cuda_argc = 7; // # args = 7
+        // data/hb/bsg_bladerunner/bsg_replicant/libraries/bsg_manycore_cuda.h
 
         //load kernel code onto device
         rc = hb_mc_kernel_enqueue(device, grid_dim, tilegroup_dim, "kernel_conv1d", cuda_argc, cuda_argv);
@@ -167,8 +168,14 @@ int kernel_conv1d(int argc, char **argv) {
 
         return HB_MC_SUCCESS;
 }
+//ERROR WRAPPER
+// int wrap(int &rc, int (*f)(const uint32_t *argv), const uint32_t *argv, uint32_t argc, char *err_msg){
+//         rc = f(argv);
+// }
 
 
+
+// MAIN (RUN HOST CODE)
 #ifdef COSIM
 void cosim_main(uint32_t *exit_code, char *args)
 {
