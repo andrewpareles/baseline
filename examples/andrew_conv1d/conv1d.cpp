@@ -21,7 +21,7 @@ void conv1d(const TA *A, const uint32_t A_LENGTH,
                         if(0 <= a_idx && a_idx < A_LENGTH)
                                 a = A[a_idx];
 
-                        res += F[j] * a;
+                        res += F[F_LENGTH - 1 - j] * a;
                 }
                 B[i] = res;
         }
@@ -59,7 +59,7 @@ int kernel_conv1d(int argc, char **argv) {
         }
         
         uint32_t N = 128; //1d image size
-        uint32_t F = 4; //1d filter size
+        uint32_t F = 7; //1d filter size
         uint32_t P = 8; //padding (symmetric, both sides)
         uint32_t S = 2; //stride
         uint32_t M = 1 + (N - F + 2 * P) / S; //size of output B
