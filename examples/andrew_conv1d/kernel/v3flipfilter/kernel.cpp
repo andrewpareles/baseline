@@ -1,11 +1,3 @@
-// Takes a vector A of length N and a 1D filter of size F, padding
-// size P, and stride S.  Performs 1D convolution of A with the filter
-// and stores the result in B of size M = 1 + (N - F + 2P) / S.
-
-// BSG_TILE_GROUP_X_DIM and BSG_TILE_GROUP_Y_DIM must be defined
-// before bsg_manycore.h and bsg_tile_group_barrier.h are
-// included. bsg_tiles_X and bsg_tiles_Y must also be defined for
-// legacy reasons, but they are deprecated.
 #define BSG_TILE_GROUP_X_DIM 1
 #define BSG_TILE_GROUP_Y_DIM 1
 #define bsg_tiles_X BSG_TILE_GROUP_X_DIM
@@ -16,8 +8,6 @@
 #include <cstdlib>
 #include <cstring>
 
-// ignores P and S-- simple version
-
 extern "C" {
         __attribute__((noinline))
         int kernel_conv1d(const float *A, //array to convolve
@@ -27,20 +17,39 @@ extern "C" {
                           const int P, //pad len (on both sides of A)
                           float *B, // answer array
                           const int S) { //stride, # elts you skip each step
-                // ignores P and S-- simple version
+                
                 bsg_cuda_print_stat_kernel_start();
-                bsg_cuda_print_stat_start(1);
+
                 // bsg_print_int(A[127]);
+
+                //copy A to array
+                float array[N];
+                memcpy(array, A, N*sizeof(float));
+                A = array;
+
+                //flip filter
+                float filterFlip[F];
+                for (int i = 0; i < F; i++){
+                        filterFlip[i] = filter[F - i - 1];
+                }
+                filter = filterFlip;
+                
+                bsg_cuda_print_stat_start(1);
                 int k = 0; // B[k] index
-                for (int i = 0; i <= N - F; i ++){
+                for (int i = -P; i <= N + P - F; i += S){ //A[i] index of filter in A
                         float val = 0;
                         for (int j = i; j < i + F; j++){ //j is index of filter summation in A
-                                val += filter[F - 1 - (j - i)] * A[j];
+                                if (0 <= j && j < N){ //unpadded region, j - i = 0...F-1
+                                        val += filter[F - 1 - (j - i)] * A[j]; //for regular non-flipped filter, use j-i
+                                }
                         }
+
                         B[k] = val;
                         k++;
+
                 }
                 bsg_cuda_print_stat_end(1);
+
                 bsg_cuda_print_stat_kernel_end();
 
                 return 0;

@@ -8,8 +8,8 @@
 #include <cstdlib>
 #include <cstring>
 
-// What's different from v0: introduce padding and stride
-// and do memcpy to speed things up
+int max(int x, int y){ return x >= y ? x : y; }
+int min(int x, int y){ return x <= y ? x : y; }
 
 extern "C" {
         __attribute__((noinline))
@@ -20,29 +20,33 @@ extern "C" {
                           const int P, //pad len (on both sides of A)
                           float *B, // answer array
                           const int S) { //stride, # elts you skip each step
-                
-                bsg_cuda_print_stat_kernel_start();
 
-                // bsg_print_int(A[127]);
+                bsg_cuda_print_stat_kernel_start();
 
                 //copy A to array
                 float array[N];
                 memcpy(array, A, N*sizeof(float));
                 A = array;
+
+                //flip filter
+                float filterFlip[F];
+                for (int i = 0; i < F; i++){
+                        filterFlip[i] = filter[F - i - 1];
+                }
+                filter = filterFlip;
                 
                 bsg_cuda_print_stat_start(1);
                 int k = 0; // B[k] index
                 for (int i = -P; i <= N + P - F; i += S){ //A[i] index of filter in A
                         float val = 0;
-                        for (int j = i; j < i + F; j++){ //j is index of filter summation in A
-                                if (0 <= j && j < N){ //unpadded region, j - i = 0...F-1
-                                        val += filter[F - 1 - (j - i)] * A[j]; //for regular non-flipped filter, use j-i
-                                }
+                        for (int j = max(i, 0); j < min(i + F, N); j++) { 
+                                // if j is outside the range 0 <= j < L, then we're in padded zone,
+                                // so the value gets zeroed out. only care about values in range
+                                val += filter[F - 1 - (j - i)] * A[j];
                         }
 
                         B[k] = val;
                         k++;
-
                 }
                 bsg_cuda_print_stat_end(1);
 
