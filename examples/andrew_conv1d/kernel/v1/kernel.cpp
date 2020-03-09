@@ -28,6 +28,7 @@ extern "C" {
                 //copy A to array
                 float array[N];
                 memcpy(array, A, N*sizeof(float));
+                A = array;
                 
                 bsg_cuda_print_stat_start(1);
                 int k = 0; // B[k] index
@@ -35,7 +36,7 @@ extern "C" {
                         float val = 0;
                         for (int j = i; j < i + F; j++){ //j is index of filter summation in A
                                 if (0 <= j && j < N){ //unpadded region, j - i = 0...F-1
-                                        val += filter[F - 1 - (j - i)] * array[j]; //for regular non-flipped filter, use j-i
+                                        val += filter[F - 1 - (j - i)] * A[j]; //for regular non-flipped filter, use j-i
                                 }
                         }
 

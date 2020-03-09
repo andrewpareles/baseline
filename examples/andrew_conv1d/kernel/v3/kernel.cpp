@@ -34,6 +34,7 @@ extern "C" {
                 //copy A to array
                 float array[N];
                 memcpy(array, A, N*sizeof(float));
+                A = array;
 
 #if FLIP_AT_START==1
                 float filterFlip[F];

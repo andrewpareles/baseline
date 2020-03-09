@@ -32,6 +32,7 @@ extern "C" {
                 //copy A to array
                 float array[N];
                 memcpy(array, A, N*sizeof(float));
+                A = array;
                 
                 bsg_cuda_print_stat_start(1);
                 int k = 0; // B[k] index
