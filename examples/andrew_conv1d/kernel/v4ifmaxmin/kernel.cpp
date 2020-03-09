@@ -42,7 +42,7 @@ extern "C" {
                         for (int j = max(i, 0); j < min(i + F, N); j++) { 
                                 // if j is outside the range 0 <= j < L, then we're in padded zone,
                                 // so the value gets zeroed out. only care about values in range
-                                val += filter[F - 1 - (j - i)] * A[j];
+                                val += filter[(j - i)] * A[j];
                         }
 
                         B[k] = val;

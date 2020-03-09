@@ -164,6 +164,7 @@ int kernel_conv1d(int argc, char **argv) {
         // compare result to expected 
         for(int i = 0; i < M; i++) {
                 bsg_pr_test_info("B_result[%d] = %.4f,\t\texpected B_result[i] =%.4f\n", i, B_result[i], B_expected[i]);
+                if (B_result[i] != B_expected[i]) return HB_MC_FAIL;
         }
 
         return HB_MC_SUCCESS;

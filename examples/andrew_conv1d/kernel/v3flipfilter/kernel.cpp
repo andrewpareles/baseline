@@ -40,7 +40,7 @@ extern "C" {
                         float val = 0;
                         for (int j = i; j < i + F; j++){ //j is index of filter summation in A
                                 if (0 <= j && j < N){ //unpadded region, j - i = 0...F-1
-                                        val += filter[F - 1 - (j - i)] * A[j]; //for regular non-flipped filter, use j-i
+                                        val += filter[(j - i)] * A[j]; //for regular non-flipped filter, use j-i
                                 }
                         }
 
