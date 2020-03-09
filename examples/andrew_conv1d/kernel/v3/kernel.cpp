@@ -9,6 +9,7 @@
 #include <cstring>
 
 #define FLIP_AT_START 1
+#define MEMCPY 1
 
 // loop unrolling with removal of if statement?
 // act as host and call another kernel function to speed this up?
@@ -32,9 +33,11 @@ extern "C" {
                 bsg_cuda_print_stat_kernel_start();
 
                 //copy A to array
+#if MEMCPY==1
                 float array[N];
                 memcpy(array, A, N*sizeof(float));
                 A = array;
+#endif
 
 #if FLIP_AT_START==1
                 float filterFlip[F];
