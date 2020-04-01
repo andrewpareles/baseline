@@ -1,38 +1,54 @@
 
-#include "conv1d.hpp"
+#include "conv2d.hpp"
 
 #define PRINT_DEBUG 0
 
-// CODE FOR VALIDATING ANSWER:
-template <typename TA, typename TF, typename TB>
-void conv1d(const TA *A, const uint32_t A_LENGTH,
-            const TF *F, const uint32_t F_LENGTH,
-            const uint32_t PAD_LENGTH,
-            const uint32_t S_LENGTH,
-            TB *B){
+#define a(A, x, y, Ny) A[(y*Ny) + x]
 
-        uint32_t M = 1 + (A_LENGTH - F_LENGTH + 2 * PAD_LENGTH) / S_LENGTH;
-        for(uint32_t i = 0; i < M; i++)
-        {
-                uint32_t window_idx = i * S_LENGTH;
-                TB res = 0;
-                for(uint32_t j = 0; j < F_LENGTH; j++)
-                {
-                        uint32_t a_idx = window_idx - PAD_LENGTH + j;
-                        float a = 0;
-                        if(0 <= a_idx && a_idx < A_LENGTH)
-                                a = A[a_idx];
-
-                        res += F[F_LENGTH - 1 - j] * a;
+void conv2d(const float *A, //array to convolve
+        const int Nx, //A xlen
+        const int Ny, //A ylen
+        const float *filter,
+        const int Fx, //filter xlen
+        const int Fy, //filter ylen
+        const int Px, //pad xlen (on both sides of A)
+        const int Py, //pad ylen (on both sides of A)
+        const int Sx, //ystride
+        const int Sy, //xstride
+        float *B, // answer array
+        ) { 
+                
+        int k = 0; // B[k] index
+        for (int y = 0; y <= Ny - Fy; y++){
+                for (int x = 0; x <= Nx - Fx; x++){
+                        float val = 0;
+                        for (int fy = y; fy < y + Fy; y++){ // fy is y index of filter summation in A
+                                for (int fx = x; fx < x + Fx; x++){ // fx is x index of filter summation in A
+                                        val += a(filter, Fx-1-(fx-x), Fy-1-(fy-y), Fy) * a(A, fx, fy, Ny);
+                                }
+                        }
+                        B[k] = val;
+                        k++;
                 }
-                B[i] = res;
         }
 }
 
+// Print matrix A (M x N). This works well for small matricies.
+template <typename T>
+void matrix_print(T *A, uint64_t M, uint64_t N) {
+        T sum = 0;
+        for (uint64_t y = 0; y < M; y ++) {
+                for (uint64_t x = 0; x < N; x ++) {
+                        std::cout << A[y * N + x] << " ";
+                }
+                std::cout << '\n';
+
+        }
+}
 
 //HOST CODE:
-int kernel_conv1d(int argc, char **argv) {       
-        bsg_pr_test_info("Running CUDA Conv1D Kernel.\n\n");
+int kernel_conv2d(int argc, char **argv) {       
+        bsg_pr_test_info("Running CUDA Conv2D Kernel.\n\n");
         char *elf, *test_name;
         struct arguments_path args = { NULL, NULL };
         argp_parse(&argp_path, argc, argv, 0, 0, &args);
@@ -61,19 +77,27 @@ int kernel_conv1d(int argc, char **argv) {
                 return rc;
         }
         
-        uint32_t N = 128; //1d image size
-        uint32_t F = 7; //1d filter size
-        uint32_t P = 8; //padding (symmetric, both sides)
-        uint32_t S = 2; //stride
-        if (strcmp(test_name, "v0none") == 0){
-                P = 0;
-                S = 1;       
-        }
-        uint32_t M = 1 + (N - F + 2 * P) / S; //size of output B
+        uint32_t Nx = 3; //2d image x-size
+        uint32_t Ny = 7; //2d image y-size
+
+        uint32_t Fx = 3; //2d filter x-size
+        uint32_t Fy = 2; //2d filter x-size
         
-        size_t A_size = sizeof(float) * N;
-        size_t F_size = sizeof(float) * F;
-        size_t B_size = sizeof(float) * M;
+        uint32_t Px = 0; //x-padding (symmetric, both sides)
+        uint32_t Py = 0; //y-padding (symmetric, both sides)
+
+        uint32_t Sx = 1; //x-stride
+        uint32_t Sy = 1; //y-stride
+
+        uint32_t Mx = 1 + (Nx - Fx + 2 * Px) / S; //x-size of output B
+        uint32_t My = 1 + (Ny - Fy + 2 * Py) / S; //y-size of output B
+        
+        size_t A_size = sizeof(float) * Nx * Ny;
+        size_t F_size = sizeof(float) * Fx * Fy;
+        size_t B_size = sizeof(float) * Mx * My;
+        
+        float A_host[Nx * Ny];
+        float filter_host[Fx * Fy];
         
         float A_host[N];
         float filter_host[F];
@@ -100,15 +124,21 @@ int kernel_conv1d(int argc, char **argv) {
         }
 
         // create image and filter to convolve:
-        for(int i = 0; i < N; i++) {
-                A_host[i] = i;
-                bsg_pr_test_info("A_host[%d] = %.9f \n", i, A_host[i]);
+        for (int y = 0; y < Ny; y++){
+                for(int x = 0; x < Nx; x++) {
+                        A_host[y*Ny + x] = (x + 1) + 2 * (y + 1);
+                }
         }
+        bsg_pr_test_info("A_host = \n");
+        matrix_print(A_host, Ny, Nx);
 
-        for(int i = 0; i < F; i++) {
-                filter_host[i] = i;
-                bsg_pr_test_info("filter_host[%d] = %.9f \n", i, filter_host[i]);
+        for (int y = 0; y < Ny; y++){
+                for(int x = 0; x < Nx; x++) {
+                        filter_host[y*Ny + x] = (x + 1) + (y - 2);
+                }
         }
+        bsg_pr_test_info("filter_host = \n");
+        matrix_print(filter_host, Fy, Fx);
         
         //put A and filter on device:
         rc = hb_mc_device_memcpy(device,
@@ -130,12 +160,11 @@ int kernel_conv1d(int argc, char **argv) {
 
         hb_mc_dimension_t tilegroup_dim = { .x = 1, .y = 1 };
         hb_mc_dimension_t grid_dim      = { .x = 1, .y = 1 };
-        uint32_t cuda_argv[] = { A_device, N, filter_device, F, P, B_device, S };
-        size_t cuda_argc = 7; // # args = 7
-        // data/hb/bsg_bladerunner/bsg_replicant/libraries/bsg_manycore_cuda.h
+        uint32_t cuda_argv[] = { A_device, Nx, Ny, filter_device, Fx, Fy, Px, Py, B_device, Sx, Sy };
+        size_t cuda_argc = 11; // # args = 11
 
         //load kernel code onto device
-        rc = hb_mc_kernel_enqueue(device, grid_dim, tilegroup_dim, "kernel_conv1d", cuda_argc, cuda_argv);
+        rc = hb_mc_kernel_enqueue(device, grid_dim, tilegroup_dim, "kernel_conv2d", cuda_argc, cuda_argv);
         if(rc != HB_MC_SUCCESS) {
                 bsg_pr_test_err("Failed to initialize grid.\n");
                 return rc;
@@ -165,18 +194,29 @@ int kernel_conv1d(int argc, char **argv) {
         }
 
         // compute expected value
-        float B_expected[M];
-        conv1d(A_host, N, filter_host, F, P, S, B_expected);
+        float B_expected[Mx*My];
+        conv2d(A_host, Nx, Ny, filter_host, Fx, Fy, Px, Py, Sx, Sy, B_expected);
 
+        float B_diff[Mx*My];
         // compare result to expected 
         float sse = 0;
-        for(int i = 0; i < M; i++) {
-                float diff = B_result[i] - B_expected[i];
-                sse += diff * diff;                
-                bsg_pr_test_info("B_result[%d] = %f,\tB_expected[%d] = %f\tdiff = %f\n", i, B_result[i], i, B_expected[i], diff);
-                // if (diff != 0) return HB_MC_FAIL;
-
+        for(int y = 0; y < My; y++) {
+                for(int x = 0; x < Mx; x++) {
+                        float diff = a(B_result, x, y, My) - a(B_expected, x, y, My);
+                        a(B_diff, x, y, My) = diff;
+                        sse += diff * diff;                
+                        bsg_pr_test_info("B_result[%d, %d] = %f,\tB_expected[%d, %d] = %f\tdiff = %f\n", x, y, B_result[i], x, y, B_expected[i], diff);
+                }
         }
+        bsg_pr_test_info("B_result = \n");
+        matrix_print(B_result, My, Mx);
+        
+        bsg_pr_test_info("B_expected = \n");
+        matrix_print(B_expected, My, Mx);
+
+        bsg_pr_test_info("B_diff = \n");
+        matrix_print(B_diff, My, Mx);
+
         bsg_pr_test_info("SSE between B_result and B_expected: %d\n", sse);
 
         return HB_MC_SUCCESS;
@@ -205,7 +245,7 @@ void cosim_main(uint32_t *exit_code, char *args)
         scope = svGetScopeFromName("tb");
         svSetScope(scope);
 #endif
-        int rc = kernel_conv1d(argc, argv);
+        int rc = kernel_conv2d(argc, argv);
         *exit_code = rc;
         bsg_pr_test_pass_fail(rc == HB_MC_SUCCESS);
         return;
@@ -213,7 +253,7 @@ void cosim_main(uint32_t *exit_code, char *args)
 #else
 int main(int argc, char **argv)
 {
-        int rc = kernel_conv1d(argc, argv);
+        int rc = kernel_conv2d(argc, argv);
         bsg_pr_test_pass_fail(rc == HB_MC_SUCCESS);
         return rc;
 }

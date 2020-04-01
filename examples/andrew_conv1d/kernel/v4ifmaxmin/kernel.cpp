@@ -23,10 +23,15 @@ extern "C" {
 
                 bsg_cuda_print_stat_kernel_start();
 
-                //copy A to array
+                //copy A over
                 float array[N];
                 memcpy(array, A, N*sizeof(float));
                 A = array;
+                
+                //copy filter over
+                float filterarray[F];
+                memcpy(filterarray, filter, F*sizeof(float));
+                filter = filterarray;
                 
                 //flip filter
                 float filterFlip[F];

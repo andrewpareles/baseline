@@ -22,10 +22,16 @@ extern "C" {
 
                 // bsg_print_int(A[127]);
 
-                //copy A to array
+                //copy A over
                 float array[N];
                 memcpy(array, A, N*sizeof(float));
                 A = array;
+                
+                //copy filter over
+                float filterarray[F];
+                memcpy(filterarray, filter, F*sizeof(float));
+                filter = filterarray;
+                
                 
                 bsg_cuda_print_stat_start(1);
                 int k = 0; // B[k] index

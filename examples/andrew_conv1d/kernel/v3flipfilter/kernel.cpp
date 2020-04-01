@@ -22,10 +22,15 @@ extern "C" {
 
                 // bsg_print_int(A[127]);
 
-                //copy A to array
+                //copy A over
                 float array[N];
                 memcpy(array, A, N*sizeof(float));
                 A = array;
+                
+                //copy filter over
+                float filterarray[F];
+                memcpy(filterarray, filter, F*sizeof(float));
+                filter = filterarray;
 
                 //flip filter
                 float filterFlip[F];
