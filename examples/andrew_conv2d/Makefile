@@ -46,7 +46,7 @@ BSG_MACHINE_PATH=$(BSG_F1_DIR)
 ################################################################################
 # Kernel versions. See kernel/README.md for more information.  Version names do
 # not need to use v* and can be any string
-VERSIONS = v0none
+VERSIONS = v0none v1padstride
 
 ################################################################################
 # Define any sources that should be used compiled during kernel compilation,

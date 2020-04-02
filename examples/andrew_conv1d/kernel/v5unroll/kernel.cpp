@@ -42,16 +42,15 @@ extern "C" {
                 
                 bsg_cuda_print_stat_start(1);
                 int k = 0; // B[k] index
-                #pragma GCC unroll 16
+                #pragma GCC unroll 16 //1+(N+2*P-F)/S
                 for (int i = -P; i <= N + P - F; i += S){ //A[i] index of filter in A
-                        float val = 0;
-                        #pragma GCC unroll 8
+                        float val = 0; 
+                        #pragma GCC unroll 8 //N
                         for (int j = max(i, 0); j < min(i + F, N); j++) { 
                                 // if j is outside the range 0 <= j < L, then we're in padded zone,
                                 // so the value gets zeroed out. only care about values in range
                                 val += filter[(j - i)] * A[j];
                         }
-
                         B[k] = val;
                         k++;
                 }

@@ -1,9 +1,14 @@
 
 #include "conv2d.hpp"
 
+#include <iostream>
+
 #define PRINT_DEBUG 0
 
-#define a(A, x, y, Ny) A[(y*Ny) + x]
+// returns a reference to A[x,y]. Instead of A[y*Nx + x], write mat_get(A, x, y, Nx)
+float& mat_get(const float *A, const int x, const int y, const int Nx) { 
+        return (float&)A[(y*Nx)+x]; 
+}
 
 void conv2d(const float *A, //array to convolve
         const int Nx, //A xlen
@@ -15,16 +20,16 @@ void conv2d(const float *A, //array to convolve
         const int Py, //pad ylen (on both sides of A)
         const int Sx, //ystride
         const int Sy, //xstride
-        float *B, // answer array
+        float *B // answer array
         ) { 
-                
+
         int k = 0; // B[k] index
         for (int y = 0; y <= Ny - Fy; y++){
                 for (int x = 0; x <= Nx - Fx; x++){
                         float val = 0;
-                        for (int fy = y; fy < y + Fy; y++){ // fy is y index of filter summation in A
-                                for (int fx = x; fx < x + Fx; x++){ // fx is x index of filter summation in A
-                                        val += a(filter, Fx-1-(fx-x), Fy-1-(fy-y), Fy) * a(A, fx, fy, Ny);
+                        for (int fy = y; fy < y + Fy; fy++){ // fy is y index of filter summation in A
+                                for (int fx = x; fx < x + Fx; fx++){ // fx is x index of filter summation in A
+                                        val += mat_get(filter, Fx-1-(fx-x), Fy-1-(fy-y), Fx) * mat_get(A, fx, fy, Nx);
                                 }
                         }
                         B[k] = val;
@@ -33,13 +38,14 @@ void conv2d(const float *A, //array to convolve
         }
 }
 
+
 // Print matrix A (M x N). This works well for small matricies.
 template <typename T>
 void matrix_print(T *A, uint64_t M, uint64_t N) {
         T sum = 0;
         for (uint64_t y = 0; y < M; y ++) {
                 for (uint64_t x = 0; x < N; x ++) {
-                        std::cout << A[y * N + x] << " ";
+                        std::cout << A[y * N + x] << "\t";
                 }
                 std::cout << '\n';
 
@@ -59,6 +65,7 @@ int kernel_conv2d(int argc, char **argv) {
                 bsg_pr_test_info("name: %s\n",test_name);
                 bsg_pr_test_info("elf: %s\n",elf);
         }
+
         int rc;
         hb_mc_device_t temp; 
         hb_mc_device_t *device = &temp;
@@ -89,8 +96,8 @@ int kernel_conv2d(int argc, char **argv) {
         uint32_t Sx = 1; //x-stride
         uint32_t Sy = 1; //y-stride
 
-        uint32_t Mx = 1 + (Nx - Fx + 2 * Px) / S; //x-size of output B
-        uint32_t My = 1 + (Ny - Fy + 2 * Py) / S; //y-size of output B
+        uint32_t Mx = 1 + (Nx - Fx + 2 * Px) / Sx; //x-size of output B
+        uint32_t My = 1 + (Ny - Fy + 2 * Py) / Sy; //y-size of output B
         
         size_t A_size = sizeof(float) * Nx * Ny;
         size_t F_size = sizeof(float) * Fx * Fy;
@@ -98,10 +105,7 @@ int kernel_conv2d(int argc, char **argv) {
         
         float A_host[Nx * Ny];
         float filter_host[Fx * Fy];
-        
-        float A_host[N];
-        float filter_host[F];
-        float B_result[M];
+        float B_result[Mx * My];
 
         //memory allocation on device
         eva_t A_device, B_device, filter_device;
@@ -126,7 +130,7 @@ int kernel_conv2d(int argc, char **argv) {
         // create image and filter to convolve:
         for (int y = 0; y < Ny; y++){
                 for(int x = 0; x < Nx; x++) {
-                        A_host[y*Ny + x] = (x + 1) + 2 * (y + 1);
+                        mat_get(A_host, x, y, Nx) = (x + 1) + 2 * (y + 1);
                 }
         }
         bsg_pr_test_info("A_host = \n");
@@ -134,7 +138,7 @@ int kernel_conv2d(int argc, char **argv) {
 
         for (int y = 0; y < Ny; y++){
                 for(int x = 0; x < Nx; x++) {
-                        filter_host[y*Ny + x] = (x + 1) + (y - 2);
+                        mat_get(filter_host, x, y, Nx) = (x + 1) + (y - 2);
                 }
         }
         bsg_pr_test_info("filter_host = \n");
@@ -202,10 +206,10 @@ int kernel_conv2d(int argc, char **argv) {
         float sse = 0;
         for(int y = 0; y < My; y++) {
                 for(int x = 0; x < Mx; x++) {
-                        float diff = a(B_result, x, y, My) - a(B_expected, x, y, My);
-                        a(B_diff, x, y, My) = diff;
+                        float diff = mat_get(B_result, x, y, Mx) - mat_get(B_expected, x, y, Mx);
+                        mat_get(B_diff, x, y, Mx) = diff;
                         sse += diff * diff;                
-                        bsg_pr_test_info("B_result[%d, %d] = %f,\tB_expected[%d, %d] = %f\tdiff = %f\n", x, y, B_result[i], x, y, B_expected[i], diff);
+                        bsg_pr_test_info("B_result[%d, %d] = %f,\tB_expected[%d, %d] = %f\tdiff = %f\n", x, y, mat_get(B_result, x, y, Mx), x, y, mat_get(B_expected, x, y, Mx), diff);
                 }
         }
         bsg_pr_test_info("B_result = \n");
