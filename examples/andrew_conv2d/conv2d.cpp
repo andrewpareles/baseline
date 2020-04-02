@@ -23,17 +23,35 @@ void conv2d(const float *A, //array to convolve
         float *B // answer array
         ) { 
 
+        float filterarray[Fx*Fy];
+        memcpy(filterarray, filter, Fx*Fy*sizeof(float));
+
+        //flip filter
+        for (int y = 0; y < Fy; y++){
+                for (int x = 0; x < Fx; x++){
+                        float temp = mat_get(filterarray, x, y, Fx);
+                        mat_get(filterarray, x, y, Fx) = mat_get(filterarray, Fx-x-1, Fy-y-1, Fx);
+                        mat_get(filterarray, Fx-x-1, Fy-y-1, Fx) = temp;
+                }
+        }
+        filter = filterarray; // update pointer
+
+
         int k = 0; // B[k] index
-        for (int y = 0; y <= Ny - Fy; y++){
-                for (int x = 0; x <= Nx - Fx; x++){
+        for (int y = -Py; y <= Ny + Py - Fy; y += Sy){
+                for (int x = -Px; x <= Nx + Px - Fx; x += Sx){
                         float val = 0;
                         for (int fy = y; fy < y + Fy; fy++){ // fy is y index of filter summation in A
-                                for (int fx = x; fx < x + Fx; fx++){ // fx is x index of filter summation in A
-                                        val += mat_get(filter, Fx-1-(fx-x), Fy-1-(fy-y), Fx) * mat_get(A, fx, fy, Nx);
-                                }
+                                if (0 <= y && y <= Ny){
+                                        for (int fx = x; fx < x + Fx; fx++){ // fx is x index of filter summation in A
+                                                if (0 <= x && x <= Nx){
+                                                        val += mat_get(filter, fx-x, fy-y, Fx) * mat_get(A, fx, fy, Nx);
+                                                }
+                                        }
                         }
                         B[k] = val;
                         k++;
+                        }
                 }
         }
 }

@@ -17,8 +17,6 @@ float& mat_get(const float *A, const int x, const int y, const int Nx) {
         return (float&)A[(y*Nx)+x]; 
 }
 
-// ignores P and S-- simple version
-
 extern "C" {
         __attribute__((noinline))
         int kernel_conv2d(const float *A, //array to convolve
