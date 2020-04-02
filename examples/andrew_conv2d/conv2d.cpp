@@ -62,7 +62,7 @@ void conv2d(const float *A, //array to convolve
                                 if (0 <= y && y <= Ny){
                                         for (int fx = x; fx < x + Fx; fx++){ // fx is x index of filter summation in A
                                                 if (0 <= x && x <= Nx){
-                                                        // printf("filter[%i,%i]=%f\tA[%i, %i]=%f\n",fx-x, fy-y, mat_get(filter, fx-x, fy-y, Fx), fx, fy, mat_get(A, fx, fy, Nx));
+                                                        // printf("filter[%i,%i]=%f\tA[%i, %i]=%f\n", fy-y, fx-x, mat_get(filter, fx-x, fy-y, Fx), fy, fx, mat_get(A, fx, fy, Nx));
                                                         val += mat_get(filter, fx-x, fy-y, Fx) * mat_get(A, fx, fy, Nx);
                                                 }
                                         }
@@ -233,7 +233,7 @@ int kernel_conv2d(int argc, char **argv) {
                         float diff = mat_get(B_result, x, y, Mx) - mat_get(B_expected, x, y, Mx);
                         mat_get(B_diff, x, y, Mx) = diff;
                         sse += diff * diff;                
-                        bsg_pr_test_info("B_result[%d, %d] = %f,\tB_expected[%d, %d] = %f\tdiff = %f\n", x, y, mat_get(B_result, x, y, Mx), x, y, mat_get(B_expected, x, y, Mx), diff);
+                        bsg_pr_test_info("B_result[%d, %d] = %f,\tB_expected[%d, %d] = %f\tdiff = %f\n", y, x, mat_get(B_result, x, y, Mx), y, x, mat_get(B_expected, x, y, Mx), diff);
                 }
         }
         bsg_pr_test_info("B_result = \n");
@@ -249,11 +249,6 @@ int kernel_conv2d(int argc, char **argv) {
 
         return HB_MC_SUCCESS;
 }
-//ERROR WRAPPER
-// int wrap(int &rc, int (*f)(const uint32_t *argv), const uint32_t *argv, uint32_t argc, char *err_msg){
-//         rc = f(argv);
-// }
-
 
 
 // MAIN (RUN HOST CODE)
