@@ -44,34 +44,39 @@ extern "C" {
                 memcpy(array, A, Nx*Ny*sizeof(float));
                 A = array; // update pointer
                 
-                //copy filter over
-                float filterarray[Fx*Fy];
-                memcpy(filterarray, filter, Fx*Fy*sizeof(float));
+                //copy over filter
+                int F = Fx*Fy;
+                float filterarray[F];
+                memcpy(filterarray, filter, F*sizeof(float));
 
                 //flip filter
-                for (int y = 0; y < Fy; y++){
-                        for (int x = 0; x < Fx; x++){
-                                float temp = mat_get(filterarray, x, y, Fx);
-                                mat_get(filterarray, x, y, Fx) = mat_get(filterarray, Fx-x-1, Fy-y-1, Fx);
-                                mat_get(filterarray, Fx-x-1, Fy-y-1, Fx) = temp;
-                        }
+                for (int i = 0; i < F/2; i++){ // flip using a neat trick
+                        float temp = filterarray[i];
+                        filterarray[i] = filterarray[F-i-1];
+                        filterarray[F-i-1] = temp;
                 }
                 filter = filterarray; // update pointer
 
                 bsg_cuda_print_stat_start(1);
+
                 int k = 0; // B[k] index
                 for (int y = -Py; y <= Ny + Py - Fy; y += Sy){
-                for (int x = -Px; x <= Nx + Px - Fx; x += Sx){
-                        float val = 0;
-                        for (int fy = max(y, 0); fy < min(y + Fy, Ny); fy++){ // fy is y index of filter summation in A
-                        for (int fx = max(x, 0); fx < min(x + Fx, Nx); fx++){ // fx is x index of filter summation in A
-                                val += mat_get(filter, fx-x, fy-y, Fx) * mat_get(A, fx, fy, Nx);
+                        for (int x = -Px; x <= Nx + Px - Fx; x += Sx){
+                                float val = 0;
+                                for (int fy = y; fy < y + Fy; fy++){ // fy is y index of filter summation in A
+                                        if (0 <= y && y <= Ny){
+                                                for (int fx = x; fx < x + Fx; fx++){ // fx is x index of filter summation in A
+                                                        if (0 <= x && x <= Nx){
+                                                                val += mat_get(filter, fx-x, fy-y, Fx) * mat_get(A, fx, fy, Nx);
+                                                        }
+                                                }
+                                        }
+                                }
+                                B[k] = val;
+                                k++;
                         }
-                        }
-                        B[k] = val;
-                        k++;
                 }
-                }
+
                 bsg_cuda_print_stat_end(1);
                 bsg_cuda_print_stat_kernel_end();
 

@@ -10,6 +10,21 @@ float& mat_get(const float *A, const int x, const int y, const int Nx) {
         return (float&)A[(y*Nx)+x]; 
 }
 
+
+
+// Print matrix A (M x N). This works well for small matricies.
+template <typename T>
+void matrix_print(T *A, uint64_t M, uint64_t N) {
+        T sum = 0;
+        for (uint64_t y = 0; y < M; y ++) {
+                for (uint64_t x = 0; x < N; x ++) {
+                        std::cout << A[y * N + x] << "\t";
+                }
+                std::cout << '\n';
+
+        }
+}
+
 void conv2d(const float *A, //array to convolve
         const int Nx, //A xlen
         const int Ny, //A ylen
@@ -23,19 +38,21 @@ void conv2d(const float *A, //array to convolve
         float *B // answer array
         ) { 
 
-        float filterarray[Fx*Fy];
-        memcpy(filterarray, filter, Fx*Fy*sizeof(float));
+        //copy over filter
+        int F = Fx*Fy;
+        float filterarray[F];
+        memcpy(filterarray, filter, F*sizeof(float));
 
         //flip filter
-        for (int y = 0; y < Fy; y++){
-                for (int x = 0; x < Fx; x++){
-                        float temp = mat_get(filterarray, x, y, Fx);
-                        mat_get(filterarray, x, y, Fx) = mat_get(filterarray, Fx-x-1, Fy-y-1, Fx);
-                        mat_get(filterarray, Fx-x-1, Fy-y-1, Fx) = temp;
-                }
+        for (int i = 0; i < F/2; i++){ // flip using a neat trick
+                float temp = filterarray[i];
+                filterarray[i] = filterarray[F-i-1];
+                filterarray[F-i-1] = temp;
         }
         filter = filterarray; // update pointer
-
+        
+        printf("Flipped filter:\n");
+        matrix_print(filter, Fy, Fx);
 
         int k = 0; // B[k] index
         for (int y = -Py; y <= Ny + Py - Fy; y += Sy){
@@ -45,28 +62,16 @@ void conv2d(const float *A, //array to convolve
                                 if (0 <= y && y <= Ny){
                                         for (int fx = x; fx < x + Fx; fx++){ // fx is x index of filter summation in A
                                                 if (0 <= x && x <= Nx){
+                                                        // printf("filter[%i,%i]=%f\tA[%i, %i]=%f\n",fx-x, fy-y, mat_get(filter, fx-x, fy-y, Fx), fx, fy, mat_get(A, fx, fy, Nx));
                                                         val += mat_get(filter, fx-x, fy-y, Fx) * mat_get(A, fx, fy, Nx);
                                                 }
                                         }
+                                }
                         }
+                        // printf("\n");
                         B[k] = val;
                         k++;
-                        }
                 }
-        }
-}
-
-
-// Print matrix A (M x N). This works well for small matricies.
-template <typename T>
-void matrix_print(T *A, uint64_t M, uint64_t N) {
-        T sum = 0;
-        for (uint64_t y = 0; y < M; y ++) {
-                for (uint64_t x = 0; x < N; x ++) {
-                        std::cout << A[y * N + x] << "\t";
-                }
-                std::cout << '\n';
-
         }
 }
 
@@ -105,8 +110,8 @@ int kernel_conv2d(int argc, char **argv) {
         uint32_t Nx = 3; //2d image x-size
         uint32_t Ny = 7; //2d image y-size
 
-        uint32_t Fx = 3; //2d filter x-size
-        uint32_t Fy = 2; //2d filter x-size
+        uint32_t Fx = 2; //2d filter x-size
+        uint32_t Fy = 3; //2d filter x-size
         
         uint32_t Px = 0; //x-padding (symmetric, both sides)
         uint32_t Py = 0; //y-padding (symmetric, both sides)
@@ -124,6 +129,24 @@ int kernel_conv2d(int argc, char **argv) {
         float A_host[Nx * Ny];
         float filter_host[Fx * Fy];
         float B_result[Mx * My];
+
+        // create image and filter to convolve:
+        for (int y = 0; y < Ny; y++){
+                for(int x = 0; x < Nx; x++) {
+                        mat_get(A_host, x, y, Nx) = (x + 1) + 2 * (y + 1);
+                }
+        }
+        bsg_pr_test_info("A_host = \n");
+        matrix_print(A_host, Ny, Nx);
+
+        //{1, -2, 0, 1, 1, 0}
+        filter_host[0] = 1;
+        filter_host[1] = -2;
+        filter_host[3] = 1;
+        filter_host[4] = 1;
+        bsg_pr_test_info("filter_host = \n");
+        matrix_print(filter_host, Fy, Fx);
+        
 
         //memory allocation on device
         eva_t A_device, B_device, filter_device;
@@ -145,23 +168,6 @@ int kernel_conv2d(int argc, char **argv) {
                 return rc;
         }
 
-        // create image and filter to convolve:
-        for (int y = 0; y < Ny; y++){
-                for(int x = 0; x < Nx; x++) {
-                        mat_get(A_host, x, y, Nx) = (x + 1) + 2 * (y + 1);
-                }
-        }
-        bsg_pr_test_info("A_host = \n");
-        matrix_print(A_host, Ny, Nx);
-
-        for (int y = 0; y < Ny; y++){
-                for(int x = 0; x < Nx; x++) {
-                        mat_get(filter_host, x, y, Nx) = (x + 1) + (y - 2);
-                }
-        }
-        bsg_pr_test_info("filter_host = \n");
-        matrix_print(filter_host, Fy, Fx);
-        
         //put A and filter on device:
         rc = hb_mc_device_memcpy(device,
                                  (void *) ((intptr_t) A_device),
@@ -239,7 +245,7 @@ int kernel_conv2d(int argc, char **argv) {
         bsg_pr_test_info("B_diff = \n");
         matrix_print(B_diff, My, Mx);
 
-        bsg_pr_test_info("SSE between B_result and B_expected: %d\n", sse);
+        bsg_pr_test_info("SSE between B_result and B_expected: %f\n", sse);
 
         return HB_MC_SUCCESS;
 }

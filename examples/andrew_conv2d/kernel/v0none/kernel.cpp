@@ -38,13 +38,13 @@ extern "C" {
                                         if (0 <= y && y <= Ny){
                                                 for (int fx = x; fx < x + Fx; fx++){ // fx is x index of filter summation in A
                                                         if (0 <= x && x <= Nx){
-                                                                val += mat_get(filter, fx-x, fy-y, Fx) * mat_get(A, fx, fy, Nx);
+                                                                val += mat_get(filter, Fx-1-(fx-x), Fy-1-(fy-y), Fx) * mat_get(A, fx, fy, Nx);
                                                         }
                                                 }
+                                        }
                                 }
                                 B[k] = val;
                                 k++;
-                                }
                         }
                 }
 
